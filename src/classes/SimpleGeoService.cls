@@ -38,7 +38,7 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
             throw new SimpleGeoServiceException('Please create a GlobalVariable__c Custom Setting with name ' + GlobalVariable.KEY_SIMPLE_GEO_SECRET_KEY);
 
         final HttpRequest request = new HttpRequest();
-        request.setEndpoint('http://api.simplegeo.com/1.0/context/address.json?address="' + address + '"');
+        request.setEndpoint('http://api.simplegeo.com/1.0/context/address.json?address=%22' + address + '%22');
         request.setMethod('GET');
         sign(request,GlobalVariable.getInstance().simpleGeoOAuthKey,GlobalVariable.getInstance().simpleGeoSecretKey);
         debug(request);
@@ -119,6 +119,7 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
             + '&' + EncodingUtil.urlEncode(al.StringUtils.substringBefore(request.getEndpoint(), '?'), 'UTF-8')
             + '&' + EncodingUtil.urlEncode(joinMap(parameters2,'=','&'), 'UTF-8')
         ;
+        System.debug('### stringToSign ' + stringToSign);
         parameters.put('oauth_signature',sign(stringToSign,secret));
         
         final Map<String,String> parametersWithValueQuoted = new Map<String,String>();
@@ -157,9 +158,10 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
                 + '\n###########################################################'
                 + '\nHTTP REQUEST: ' 
                 + '\n###########################################################'
-                + '\nCompressed: ' + request.getCompressed()
-                + '\nEndpoint: ' + request.getEndpoint()
-                + '\nMethod: ' + request.getMethod()
+                + '\nCompressed:    ' + request.getCompressed()
+                + '\nEndpoint:      ' + request.getEndpoint()
+                + '\nMethod:        ' + request.getMethod()
+                + '\nAuthorization: ' + request.getHeader('Authorization')
                 + '\nBody: '
                 + '\n' + request.getBody()
                 + '\n'
@@ -174,9 +176,9 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
                 + '\n###########################################################'
                 + '\nHTTP RESPONSE: ' 
                 + '\n###########################################################'
-                + '\nHeaders:    ' + retrieveHeaders(response)
-                + '\nStatusCode: ' + response.getStatusCode()
-                + '\nStatus:     ' + response.getStatus()
+                + '\nHeaders:       ' + retrieveHeaders(response)
+                + '\nStatusCode:    ' + response.getStatusCode()
+                + '\nStatus:        ' + response.getStatus()
                 + '\nBody: '
                 + '\n' + response.getBody()
                 + '\n'
