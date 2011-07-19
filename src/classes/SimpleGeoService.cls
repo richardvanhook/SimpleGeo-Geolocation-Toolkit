@@ -1,9 +1,11 @@
 /* ============================================================
- * This code is part of Richard Vanhook's submission to the 
+ * This code is part of Richard Vanhook's submission to the
  * Cloudspokes Geolocation Toolkit challenge.
  *
- * This software is provided "AS IS," and you, its user, 
- * assume all risks when using it. 
+ * Code changed to send addresses with spaces - MR
+ *
+ * This software is provided "AS IS," and you, its user,
+ * assume all risks when using it.
  * ============================================================
  */
 global class SimpleGeoService implements IGeocodeServiceAdapter{
@@ -14,7 +16,7 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
     private static SimpleGeoService instance;
     
     //==================================================
-    // CONSTRUCTOR  
+    // CONSTRUCTOR
     //==================================================
     private SimpleGeoService(){}
     
@@ -29,20 +31,22 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
     }
 
     global static GeoPoint lookup(String address){
-    	address = al.StringUtils.remove(address, '\n');
-        if(al.StringUtils.isBlank(address)) 
+     address = al.StringUtils.remove(address, '\n');
+        if(al.StringUtils.isBlank(address))
             throw new SimpleGeoServiceException('address parameter cannot be blank');
-        if(al.StringUtils.isBlank(GlobalVariable.getInstance().simpleGeoOAuthKey)) 
-            throw new SimpleGeoServiceException('Please create a GlobalVariable__c Custom Setting with name  ' + GlobalVariable.KEY_SIMPLE_GEO_OAUTH_KEY);
-        if(al.StringUtils.isBlank(GlobalVariable.getInstance().simpleGeoSecretKey)) 
+        if(al.StringUtils.isBlank(GlobalVariable.getInstance().simpleGeoOAuthKey))
+            throw new SimpleGeoServiceException('Please create a GlobalVariable__c Custom Setting with name ' + GlobalVariable.KEY_SIMPLE_GEO_OAUTH_KEY);
+        if(al.StringUtils.isBlank(GlobalVariable.getInstance().simpleGeoSecretKey))
             throw new SimpleGeoServiceException('Please create a GlobalVariable__c Custom Setting with name ' + GlobalVariable.KEY_SIMPLE_GEO_SECRET_KEY);
 
         final HttpRequest request = new HttpRequest();
         request.setEndpoint('http://api.simplegeo.com/1.0/context/address.json?address=%22' + address + '%22');
         request.setMethod('GET');
         sign(request,GlobalVariable.getInstance().simpleGeoOAuthKey,GlobalVariable.getInstance().simpleGeoSecretKey);
+        //redo the endpoint with url encoded spaces now the encrypt part is done...
+        request.setEndpoint('http://api.simplegeo.com/1.0/context/address.json?address=%22' +address.replace(' ', '%20')+'%22');
         debug(request);
-        final HttpResponse response = al.HttpUtils.send(request); 
+        final HttpResponse response = al.HttpUtils.send(request);
         debug(response);
         if(response == null || response.getStatusCode() != 200){
             String message = '';
@@ -79,7 +83,7 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
             try{
                 returnValue = Double.valueOf(al.StringUtils.trim(value));
             }catch(System.TypeException e){
-                throw new SimpleGeoServiceException('Invalid coordinate: ' + value,e); 
+                throw new SimpleGeoServiceException('Invalid coordinate: ' + value,e);
             }
         }
         return returnValue;
@@ -102,19 +106,19 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
 
     global static void sign(
          HttpRequest request
-        ,String      oauthKey
-        ,String      secret 
+        ,String oauthKey
+        ,String secret
     ){
         if(request == null) throw new al.IllegalArgumentException('request argument cannot be null');
         final Map<String,String> parameters = new Map<String,String>{
-             'oauth_consumer_key'      => oauthKey
-            ,'oauth_signature_method'  => 'HMAC-SHA1'
-            ,'oauth_timestamp'         => String.valueOf(DateTime.now().getTime()/1000)
-            ,'oauth_nonce'             => String.valueOf(Crypto.getRandomInteger())
+             'oauth_consumer_key' => oauthKey
+            ,'oauth_signature_method' => 'HMAC-SHA1'
+            ,'oauth_timestamp' => String.valueOf(DateTime.now().getTime()/1000)
+            ,'oauth_nonce' => String.valueOf(Crypto.getRandomInteger())
         };
         final Map<String,String> parameters2 = parameters.clone();
         parameters2.putAll(getUrlParams(request.getEndpoint()));
-        final String stringToSign = 
+        final String stringToSign =
               request.getMethod().toUpperCase()
             + '&' + EncodingUtil.urlEncode(al.StringUtils.substringBefore(request.getEndpoint(), '?'), 'UTF-8')
             + '&' + EncodingUtil.urlEncode(joinMap(parameters2,'=','&'), 'UTF-8')
@@ -126,7 +130,7 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
         for(String key : parameters.keySet()){
             parametersWithValueQuoted.put(key,'"'+parameters.get(key)+'"');
         }
-        request.setHeader('Authorization','OAuth ' + joinMap(parametersWithValueQuoted,'=',','));      
+        request.setHeader('Authorization','OAuth ' + joinMap(parametersWithValueQuoted,'=',','));
     }
     
 
@@ -138,8 +142,9 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
                 List<String> kv = s.split('=');
                 if(kv.size()>1) {
                     returnValue.put(
-                        EncodingUtil.urlEncode(EncodingUtil.urlDecode(kv[0], 'UTF-8'), 'UTF-8').replace('+','')
-                        ,EncodingUtil.urlEncode(EncodingUtil.urlDecode(kv[1], 'UTF-8'), 'UTF-8').replace('+','')
+                        EncodingUtil.urlEncode(EncodingUtil.urlDecode(kv[0], 'UTF-8'), 'UTF-8').replace('+','%20')
+                        ,EncodingUtil.urlEncode(EncodingUtil.urlDecode(kv[1], 'UTF-8'), 'UTF-8').replace('+','%20')
+                     
                     );
                 }
             }
@@ -156,11 +161,11 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
         if(request != null){
             returnValue = '\n'
                 + '\n###########################################################'
-                + '\nHTTP REQUEST: ' 
+                + '\nHTTP REQUEST: '
                 + '\n###########################################################'
-                + '\nCompressed:    ' + request.getCompressed()
-                + '\nEndpoint:      ' + request.getEndpoint()
-                + '\nMethod:        ' + request.getMethod()
+                + '\nCompressed: ' + request.getCompressed()
+                + '\nEndpoint: ' + request.getEndpoint()
+                + '\nMethod: ' + request.getMethod()
                 + '\nAuthorization: ' + request.getHeader('Authorization')
                 + '\nBody: '
                 + '\n' + request.getBody()
@@ -174,11 +179,11 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
         if(response != null){
             System.debug('\n'
                 + '\n###########################################################'
-                + '\nHTTP RESPONSE: ' 
+                + '\nHTTP RESPONSE: '
                 + '\n###########################################################'
-                + '\nHeaders:       ' + retrieveHeaders(response)
-                + '\nStatusCode:    ' + response.getStatusCode()
-                + '\nStatus:        ' + response.getStatus()
+                + '\nHeaders: ' + retrieveHeaders(response)
+                + '\nStatusCode: ' + response.getStatusCode()
+                + '\nStatus: ' + response.getStatus()
                 + '\nBody: '
                 + '\n' + response.getBody()
                 + '\n'
@@ -200,7 +205,7 @@ global class SimpleGeoService implements IGeocodeServiceAdapter{
         }
         returnValue = '[' + returnValue + ']';
         return returnValue;
-    }    
+    }
 
     global static List<String> joinMap(Map<String,String> theMap, String keyValueSeparator){
         List<String> returnValue = null;
